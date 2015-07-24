@@ -2,12 +2,22 @@ import phantom from 'co-phantom'
 import cheerio from 'cheerio'
 import Debug from 'debug'
 import _ from 'lodash'
-const url = 'http://wwww.anumex.com'
+import Proxies from 'free-proxies'
+import { clean } from 'underscore.string'
+const anumexUrl = 'http://wwww.anumex.com'
 const debug = Debug('scraper-anumex')
+const proxies = new Proxies()
 export default class Base{
   *init(){
-    if(!this.phantom)
-    this.phantom = yield phantom.create()
+    if(this.phantom)return;
+    let proxy = yield proxies.getRandomProxy()
+    proxy = proxy.match(/[0-9\.\:]+$/)[0]
+    debug(proxy)
+    this.phantom = yield phantom.create({
+      parameters:{
+        proxy:proxy
+      }
+    })
   }
   *getHtml(url){
     yield this.init()
@@ -20,29 +30,5 @@ export default class Base{
     })
     return html
   }
-  *getCategories(){
-    let html= yield this.getHtml(url)
-    let $ = cheerio.load(html)
-    let categories = $('#sm_cat>div>a:first-child').toArray()
-    categories = _.map(categories,(cat)=>{
-      cat = $(cat)
-      return cat.attr('href')
-    })
-    debug(categories)
-    return categories
-  }
-  *getListOfPagesForCategory(url){
-    let html= yield this.getHtml(url)
-    let $ = cheerio.load(html)
-    let numAnuncios = $('.res_nav').next().html()
-    numAnuncios = parseInt(numAnuncios.match(/([0-9\,]+)\</)[0].replace(',',''))
-    debug(numAnuncios)
-    numAnuncios = numAnuncios/30
-    let urls = []
-    for (var i = 0; i < numAnuncios; i++) {
-      urls.push(`${url}?p=${i}`)
-      numAnuncios = numAnuncios-1
-    }
-    debug(urls)
-  }
+
 }
